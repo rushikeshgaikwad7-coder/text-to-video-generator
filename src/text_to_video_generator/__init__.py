@@ -1,8 +1,3 @@
-from .pipeline import VideoRequest, VideoGenerationPipeline
-from .models import MockVideoModel
+from text_to_video_generator.main import app
 
-__all__ = [
-    "VideoRequest",
-    "VideoGenerationPipeline",
-    "MockVideoModel",
-]
+__all__ = ["app"]
