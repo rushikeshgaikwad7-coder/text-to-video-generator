@@ -1,47 +1,37 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from text_to_video_generator.api.routes import router
 
-from text_to_video_generator.api.schemas import GenerationResponse, ImageToVideoRequest, TextToVideoRequest
-from text_to_video_generator.pipelines.image_to_video import ImageToVideoPipeline
-from text_to_video_generator.pipelines.text_to_video import TextToVideoPipeline
+app = FastAPI(
+    title="Text-to-Video Generator",
+    description="Unified AI video generation platform",
+    version="0.1.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
+)
 
-router = APIRouter()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-
-@router.get("/health")
-def health_check():
-    return {"status": "ok", "service": "text-to-video-generator"}
-
-
-@router.post("/generate/video", response_model=GenerationResponse)
-def generate_video(request: TextToVideoRequest):
-    try:
-        pipeline = TextToVideoPipeline(backend=request.backend, output_dir="outputs")
-        result = pipeline.run(
-            prompt=request.prompt,
-            duration_seconds=request.duration_seconds,
-            fps=request.fps,
-            width=request.width,
-            height=request.height,
-            audio_enabled=request.audio_enabled,
-        )
-        return GenerationResponse(status="success", message="Video generation job completed", output=result)
-    except Exception as exc:  # pragma: no cover - error path
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+app.include_router(router)
 
 
-@router.post("/generate/video-from-image", response_model=GenerationResponse)
-def generate_video_from_image(request: ImageToVideoRequest):
-    try:
-        pipeline = ImageToVideoPipeline(backend=request.backend, output_dir="outputs")
-        result = pipeline.run(
-            image_path=request.image_path,
-            prompt=request.prompt,
-            duration_seconds=request.duration_seconds,
-            fps=request.fps,
-            width=request.width,
-            height=request.height,
-            audio_enabled=request.audio_enabled,
-        )
-        return GenerationResponse(status="success", message="Image-to-video generation job completed", output=result)
-    except Exception as exc:  # pragma: no cover - error path
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+@app.get("/")
+def root():
+    return {
+        "message": "Text-to-Video Generator API",
+        "docs": "/docs",
+        "health": "/api/v1/health",
+        "generate": "/api/v1/generate"
+    }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

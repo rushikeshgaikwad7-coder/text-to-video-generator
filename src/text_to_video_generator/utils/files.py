@@ -1,33 +1,22 @@
-from pathlib import Path
-from typing import Any
+from text_to_video_generator.models.factory import get_model
+from text_to_video_generator.pipelines.export import VideoExportPipeline
+from text_to_video_generator.utils.files import validate_image_path, validate_prompt
 
 
-def ensure_directory(path: str | Path) -> Path:
-    directory = Path(path)
-    directory.mkdir(parents=True, exist_ok=True)
-    return directory
-
-
-def build_output_path(output_dir: str, file_name: str) -> str:
-    directory = ensure_directory(output_dir)
-    return str(directory / file_name)
-
-
-def validate_prompt(prompt: str) -> str:
-    if not prompt or not prompt.strip():
-        raise ValueError("Prompt cannot be empty")
-    return prompt.strip()
-
-
-def validate_image_path(image_path: str) -> str:
-    if not image_path or not image_path.strip():
-        raise ValueError("Image path cannot be empty")
-    return image_path.strip()
-
-
-def sanitize_filename(name: str) -> str:
-    return "".join(ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in name).lower()
-
-
-def metadata_to_json(data: Any) -> dict:
-    return data if isinstance(data, dict) else {"value": data}
+class ImageToVideoPipeline:
+    def __init__(self, backend: str = "mock", output_dir: str = "outputs"):
+        self.model = get_model(backend)
+        self.exporter = VideoExportPipeline(output_dir=output_dir)
+    
+    def run(self, image_path: str, prompt: str, duration_seconds: int = 5, fps: int = 24, width: int = 1280, height: int = 720, audio_enabled: bool = True):
+        clean_image = validate_image_path(image_path)
+        clean_prompt = validate_prompt(prompt)
+        generation = self.model.generate_image_to_video(clean_image, clean_prompt, duration_seconds=duration_seconds, fps=fps, width=width, height=height)
+        export_result = self.exporter.export_video(clean_prompt, duration_seconds, width, height, audio_enabled=audio_enabled)
+        
+        return {
+            "image_path": clean_image,
+            "prompt": clean_prompt,
+            "generation": generation,
+            "export": export_result
+        }
